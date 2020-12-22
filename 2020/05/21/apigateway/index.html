@@ -1,0 +1,219 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+	<meta charset="utf-8">
+    
+	<title>网关简介 - 聪少</title>
+    <meta name="author" content="">
+    
+	<meta name="description" content="&lt;h3 id=&#34;网关作用&#34;&gt;&lt;a href=&#34;#网关作用&#34; class=&#34;headerlink&#34; title=&#34;网关作用&#34;&gt;&lt;/a&gt;网关作用&lt;/h3&gt;&lt;p&gt;网关分为两类&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;入口网关&lt;br&gt;入口网关将一些服务共有的功能整合在一起，独立部署为单独的一层，用来解决一些服务治理的问题。可以把网关看作系统边界，它可以对出入系统的流量进行统一的管控。网关提供客户端一个统一的接入地址，API网关可以将用户的请求动态路由到不同的业务服务上，并且做一些必要的协议转换工作。在服务系统中对外暴露的协议可能不同，如http服务，rpc服务等等，甚至有些历史遗留的服务。API网关可以很好的对客户端屏蔽这些服务的地址以及协议细节，给客户端接入带来极大的便捷。&lt;br&gt;在API网关中可以加入一些服务治理策略，如服务熔断、降级、流量控制、分流等。对于客户端等认证、鉴权也可以放在API网关中。另外还可以配合黑白名单，如设备ID、用户ID等维度策略。在网关中还可以很方便的做一些统计工作，如访问订单服务、商品服务等等。&lt;/li&gt;
+&lt;li&gt;出口网关&lt;br&gt;出口网关，在实际的系统开发过程中，会依赖很多外部的三方服务，如三方账号登录、三方支付服务等。所以开发者可以在自身服务和三方服务之间部署出口网关，在出口网关中对外调用外部的API做统一的认证、授权、审计和权限访问。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;a id=&#34;more&#34;&gt;&lt;/a&gt;
+
+&lt;h3 id=&#34;实现注意细节&#34;&gt;&lt;a href=&#34;#实现注意细节&#34; class=&#34;headerlink&#34; title=&#34;实现注意细节&#34;&gt;&lt;/a&gt;实现注意细节&lt;/h3&gt;&lt;ul&gt;
+&lt;li&gt;性能&lt;br&gt;  API网关承接所有从客户端的所有流量，假如业务处理需要10ms，在API网关处理需要1ms，那么相当于每个API的响应时间需要增加10%，无疑在对性能影响是重大的。提升API网关的性能很重要的一部分在于I/O模型。Netfix开源的API网关Zuul中采用I/O多路复用的模型处理接入的I/O请求，并且使用非阻塞的调用方式。除此之外，API网关中执行动作有些是可以预先定义好的，如黑白名单、接口动态路由等等。API网关在设计的时候需要注意拓展性，方便开发者随时在网关上增加一些逻辑或者下掉一些逻辑。&lt;br&gt;一般来说，可以把每一个操作定义为一个filter过滤器，然后使用责任链模式将这些过滤器串起来。责任链可以动态的组织这些过滤器，解偶过滤器之间的关系，无轮增加还是减少都对其他过滤器无任何影响。（过滤器通常分为三种过滤器：1. 路由前过滤器 2. 路由过滤器 3. 路由后过滤器）&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;img src=&#34;/images/apigateway/WechatIMG8.png&#34; alt=&#34;WechatIMG8&#34;&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;线程隔离/保护&lt;br&gt;  为了提升网关的并行处理能力，一般使用线程池来执行请求。当在后端服务响应缓慢的时候，线程池中线程就会被后端的缓慢服务消耗殆尽，那么其他服务的请求就会受到影响，所以我们要针对不同的服务做线程隔离或者保护。&lt;br&gt;  以下两种方法：&lt;ul&gt;
+&lt;li&gt;如果后端的服务拆分的不多，可以针对不同的服务采用不同的线程池，这样发生故障的服务就不会影响其他正常的服务了&lt;/li&gt;
+&lt;li&gt;线程池内部可以针对不同服务甚至不同的接口做线程保护。如线程池的最大线程是1000，那么可以给每个服务设置一个最多的使用配额。（在golang中可以适当的控制携程数量，来达到控制线程数的相同目的）&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id=&#34;如何引用API网关&#34;&gt;&lt;a href=&#34;#如何引用API网关&#34; class=&#34;headerlink&#34; title=&#34;如何引用API网关&#34;&gt;&lt;/a&gt;如何引用API网关&lt;/h3&gt;&lt;p&gt;用电商应用举个例子，在服务层和客户端之间有一层Web层，这个Web层主要做两个方面的事情：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;&lt;p&gt;&lt;strong&gt;&lt;em&gt;对服务层接口数据的聚合&lt;/em&gt;&lt;/strong&gt;。如商品详情页的接口可能聚合到服务层总，获取商品信息、用户信息、店铺信息以及用户评论等多个服务的接口数据。 &lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;&lt;p&gt;&lt;strong&gt;&lt;em&gt;Web层可能需要将Http请求转换成RPC请求，且对某些请求添加黑名单功能等&lt;/em&gt;&lt;/strong&gt;。因此我们在做改造的时候可以先将API网关先从Web层中独立出来，将协议转换、限流、黑明单等功能搬到API网关中来处理，形成独立的**&lt;em&gt;入口网关**&lt;/em&gt;。&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;针对服务接口数据聚合的操作一般两种解决思路是：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;p&gt;独立一组网关专门做聚合、超时控制方面的事情，前一种网关称作流量网关，后一种称作业务网关&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;&lt;p&gt;抽取独立的服务层，做门做接口聚合操作。这样服务层就大概分为原子服务层和聚合服务层。&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;接口数据聚合是业务操作，与其放在通用网关来实现不如放在更贴近业务的服务层来实现&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;/images/apigateway/WechatIMG7.png&#34; alt=&#34;WechatIMG7&#34;&gt;&lt;/p&gt;
+"> <!-- TODO: truncate -->
+	
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+	<link href="atom.xml" rel="alternate" title="聪少" type="application/atom+xml">
+	<link href="/favicon.ico" rel="shortcut icon">
+    <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+    <link href="/stylesheets/custom.css" media="screen, projection" rel="stylesheet" type="text/css">
+    <link href="/stylesheets/hljs.css" media="screen, projection" rel="stylesheet" type="text/css">
+
+    <link href='//fonts.googleapis.com/css?family=Slackey' rel='stylesheet' type='text/css'>
+    <link href='//fonts.googleapis.com/css?family=Fjalla+One' rel='stylesheet' type='text/css'>
+    <link href='//fonts.googleapis.com/css?family=Amethysta' rel='stylesheet' type='text/css'>
+	<script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
+    <!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![}]-->
+
+    <script type="text/javascript" src="/javascripts/jquery-tapir.js"></script>
+
+    <!-- remove or comment it to disable ajaxification -->   
+    <!-- <script src="/javascripts/ajaxify.js"></script> -->
+
+    
+
+    
+
+<meta name="generator" content="Hexo 5.3.0"></head>
+
+
+<body>
+    <div id="wrapper">
+    <header id="header" class="inner"><!-- for more effects see _animate.scss -->
+<h1 class="animated bounceInDown">
+    <div id="headerbg">
+        聪少
+    </div>
+</h1>
+<span class="subtitle"></span>
+<br>
+
+<ul id="social-links" style="text-align:center; clear:both;">
+  
+  
+  
+  
+  
+  
+  
+  
+</ul>
+
+
+<!-- use full url including 'index.html' for navigation bar if you are using ajax -->
+<ul id="nav">
+	<li id="ajax"><a href="/index.html">Home</a></li>
+	<li id="ajax"><a href="/archives/index.html">Archives</a></li>
+	<li id="ajax"><a href="/tags/index.html">Tags</a></li>
+    <li><a href="/atom.xml">RSS</a></li>
+    
+    <li>
+    <div id="dark">
+        <form action="//www.google.com.hk/search" method="get" accept-charset="UTF-8" id="search">
+            <input type="hidden" name="sitesearch" value="http://cong.im" />
+            <input type="text" name="q" results="0" placeholder="Search..." x-webkit-speech />
+        </form>
+    </div>
+    </li>
+        
+</ul>
+
+
+
+
+</header>
+
+<div id="toload">
+<!-- begin toload -->
+    <div id="content" class="inner">
+        <article class="post">
+	<h2 class="title">网关简介</h2>
+    <div class="meta">
+        <div class="date">Published on: <time datetime="2020-05-21T05:33:58.000Z" itemprop="datePublished">May 21, 2020</time>
+</div>
+        <div class="tags">Tags: 
+
+<a href="/tags/学习笔记/">学习笔记</a>
+</div>
+    </div>
+	<div class="entry-content"><h3 id="网关作用"><a href="#网关作用" class="headerlink" title="网关作用"></a>网关作用</h3><p>网关分为两类</p>
+<ul>
+<li>入口网关<br>入口网关将一些服务共有的功能整合在一起，独立部署为单独的一层，用来解决一些服务治理的问题。可以把网关看作系统边界，它可以对出入系统的流量进行统一的管控。网关提供客户端一个统一的接入地址，API网关可以将用户的请求动态路由到不同的业务服务上，并且做一些必要的协议转换工作。在服务系统中对外暴露的协议可能不同，如http服务，rpc服务等等，甚至有些历史遗留的服务。API网关可以很好的对客户端屏蔽这些服务的地址以及协议细节，给客户端接入带来极大的便捷。<br>在API网关中可以加入一些服务治理策略，如服务熔断、降级、流量控制、分流等。对于客户端等认证、鉴权也可以放在API网关中。另外还可以配合黑白名单，如设备ID、用户ID等维度策略。在网关中还可以很方便的做一些统计工作，如访问订单服务、商品服务等等。</li>
+<li>出口网关<br>出口网关，在实际的系统开发过程中，会依赖很多外部的三方服务，如三方账号登录、三方支付服务等。所以开发者可以在自身服务和三方服务之间部署出口网关，在出口网关中对外调用外部的API做统一的认证、授权、审计和权限访问。</li>
+</ul>
+<a id="more"></a>
+
+<h3 id="实现注意细节"><a href="#实现注意细节" class="headerlink" title="实现注意细节"></a>实现注意细节</h3><ul>
+<li>性能<br>  API网关承接所有从客户端的所有流量，假如业务处理需要10ms，在API网关处理需要1ms，那么相当于每个API的响应时间需要增加10%，无疑在对性能影响是重大的。提升API网关的性能很重要的一部分在于I/O模型。Netfix开源的API网关Zuul中采用I/O多路复用的模型处理接入的I/O请求，并且使用非阻塞的调用方式。除此之外，API网关中执行动作有些是可以预先定义好的，如黑白名单、接口动态路由等等。API网关在设计的时候需要注意拓展性，方便开发者随时在网关上增加一些逻辑或者下掉一些逻辑。<br>一般来说，可以把每一个操作定义为一个filter过滤器，然后使用责任链模式将这些过滤器串起来。责任链可以动态的组织这些过滤器，解偶过滤器之间的关系，无轮增加还是减少都对其他过滤器无任何影响。（过滤器通常分为三种过滤器：1. 路由前过滤器 2. 路由过滤器 3. 路由后过滤器）</li>
+</ul>
+<p><img src="/images/apigateway/WechatIMG8.png" alt="WechatIMG8"></p>
+<ul>
+<li>线程隔离/保护<br>  为了提升网关的并行处理能力，一般使用线程池来执行请求。当在后端服务响应缓慢的时候，线程池中线程就会被后端的缓慢服务消耗殆尽，那么其他服务的请求就会受到影响，所以我们要针对不同的服务做线程隔离或者保护。<br>  以下两种方法：<ul>
+<li>如果后端的服务拆分的不多，可以针对不同的服务采用不同的线程池，这样发生故障的服务就不会影响其他正常的服务了</li>
+<li>线程池内部可以针对不同服务甚至不同的接口做线程保护。如线程池的最大线程是1000，那么可以给每个服务设置一个最多的使用配额。（在golang中可以适当的控制携程数量，来达到控制线程数的相同目的）</li>
+</ul>
+</li>
+</ul>
+<h3 id="如何引用API网关"><a href="#如何引用API网关" class="headerlink" title="如何引用API网关"></a>如何引用API网关</h3><p>用电商应用举个例子，在服务层和客户端之间有一层Web层，这个Web层主要做两个方面的事情：</p>
+<ol>
+<li><p><strong><em>对服务层接口数据的聚合</em></strong>。如商品详情页的接口可能聚合到服务层总，获取商品信息、用户信息、店铺信息以及用户评论等多个服务的接口数据。 </p>
+</li>
+<li><p><strong><em>Web层可能需要将Http请求转换成RPC请求，且对某些请求添加黑名单功能等</em></strong>。因此我们在做改造的时候可以先将API网关先从Web层中独立出来，将协议转换、限流、黑明单等功能搬到API网关中来处理，形成独立的**<em>入口网关**</em>。</p>
+</li>
+</ol>
+<p>针对服务接口数据聚合的操作一般两种解决思路是：</p>
+<ul>
+<li><p>独立一组网关专门做聚合、超时控制方面的事情，前一种网关称作流量网关，后一种称作业务网关</p>
+</li>
+<li><p>抽取独立的服务层，做门做接口聚合操作。这样服务层就大概分为原子服务层和聚合服务层。</p>
+</li>
+</ul>
+<p>接口数据聚合是业务操作，与其放在通用网关来实现不如放在更贴近业务的服务层来实现</p>
+<p><img src="/images/apigateway/WechatIMG7.png" alt="WechatIMG7"></p>
+</div>
+
+<div class="meta">
+	
+</div>
+</article>
+
+	<div class="share">
+	<div class="addthis_toolbox addthis_default_style ">
+	
+	
+	<a class="addthis_button_tweet"></a>
+	
+	
+	<a class="addthis_counter addthis_pill_style"></a>
+	</div>
+  <script type="text/javascript" src="http://s7.addthis.com/js/250/addthis_widget.js#pubid="></script>
+</div>
+
+
+
+
+    </div>
+    <footer id="footer">
+    <div style="display:inline">
+    Copyright &copy; 2020
+
+    聪少
+. Powered by <a href="http://zespia.tw/hexo/" target="_blank">Hexo</a> |
+    Theme is <a target="_blank" rel="noopener" href="https://github.com/wd/hexo-fabric">hexo-fabric</a>, fork from <a target="_blank" rel="noopener" href="http://github.com/panks/fabric">fabric</a> by <a target="_blank" rel="noopener" href="http://panks.me">Pankaj Kumar</a>
+</div>
+
+
+    </footer>
+    <script src="/javascripts/fabric.js"></script>
+<script src="/javascripts/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+	$('.fancybox').fancybox();
+})(jQuery);
+</script>
+ <!-- Delete or comment this line to disable Fancybox -->
+
+
+
+<!-- end toload --> 
+</div>
+</div>
+<script src="/javascripts/jquery.ui.totop.js" type="text/javascript"></script>
+<script type="text/javascript">
+/*<![CDATA[*/
+;(function($){$().UItoTop({easingType:'easeOutCirc'});})(jQuery); 
+/*]]>*/
+</script><!-- remove it to remove the scroll to top button -->
+</body>
+</html>
