@@ -40,7 +40,7 @@
     <link href="http://cong.im/2020/12/09/io%E5%88%86%E6%9E%90/"/>
     <id>http://cong.im/2020/12/09/io%E5%88%86%E6%9E%90/</id>
     <published>2020-12-09T08:28:28.000Z</published>
-    <updated>2020-12-22T11:12:37.185Z</updated>
+    <updated>2020-12-22T11:48:50.154Z</updated>
     
     
     <summary type="html">&lt;h1 id=&quot;Linux文件系统&quot;&gt;&lt;a href=&quot;#Linux文件系统&quot; class=&quot;headerlink&quot; title=&quot;Linux文件系统&quot;&gt;&lt;/a&gt;Linux文件系统&lt;/h1&gt;&lt;p&gt;文件系统本身是对存储设备上的文件进行组织管理的机制。组织方式不同就形成不同的文件系统。&lt;br&gt;在Linux中一切皆为文件，为了方便管理Linux文件系统为每个文件都分配两个数据结构，索引节点、和目录项。&lt;/p&gt;
