@@ -41,7 +41,19 @@
 &lt;li&gt;&lt;p&gt;异步I/O 程序执行I/O操作之后，不用等待完成和完成后的响应，而是继续执行。等到这次I/O完成后，响应会用事件通知的方式告知应用程序&lt;/p&gt;
 &lt;/li&gt;
 &lt;/ul&gt;
-&lt;h1 id=&#34;磁盘IO&#34;&gt;&lt;a href=&#34;#磁盘IO&#34; class=&#34;headerlink&#34; title=&#34;磁盘IO&#34;&gt;&lt;/a&gt;磁盘IO&lt;/h1&gt;&lt;h1 id=&#34;网络IO&#34;&gt;&lt;a href=&#34;#网络IO&#34; class=&#34;headerlink&#34; title=&#34;网络IO&#34;&gt;&lt;/a&gt;网络IO&lt;/h1&gt;"> <!-- TODO: truncate -->
+&lt;h1 id=&#34;磁盘IO&#34;&gt;&lt;a href=&#34;#磁盘IO&#34; class=&#34;headerlink&#34; title=&#34;磁盘IO&#34;&gt;&lt;/a&gt;磁盘IO&lt;/h1&gt;&lt;p&gt;在Linux中磁盘实际上是作为一个块设备来管理的，也就是以块为单位读写数据，并且支持随机读写。每个块设备都会被赋予两个设备号，&lt;br&gt;分别是主、次设备号。主设备号主要用于驱动程序中，用来区分设备类型；而次设备号则是用来给多个同类设备编号&lt;/p&gt;
+&lt;h2 id=&#34;通用块层&#34;&gt;&lt;a href=&#34;#通用块层&#34; class=&#34;headerlink&#34; title=&#34;通用块层&#34;&gt;&lt;/a&gt;通用块层&lt;/h2&gt;&lt;p&gt;和VFS类似，为了减少不同设备的差异带来的影响，Linux通过一个统一的通用块层来管理不同的设备。其实就是处在文件系统和磁盘中间的一个块设备抽象层，主要有以下两个功能：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;向上为文件系统和应用程序提供访问块的标准接口，向下把哥哥异构的磁盘设备统一抽象，并提供统一框架来管理这些设备的驱动程序&lt;/li&gt;
+&lt;li&gt;给文件系统和应用程序发来的I/O请求排队，并通过重新排序、请求、合并等方式提高磁盘读写效率&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;Linux四种I-O调度算法&#34;&gt;&lt;a href=&#34;#Linux四种I-O调度算法&#34; class=&#34;headerlink&#34; title=&#34;Linux四种I/O调度算法&#34;&gt;&lt;/a&gt;Linux四种I/O调度算法&lt;/h2&gt;&lt;ul&gt;
+&lt;li&gt;NONE NONE确切等说不算调度算法，因为它完全不实用任何I/O调度器，对文件系统和应用程序的I/O其实不做任何处理，常在虚拟机中（此时磁盘I/O调度完全由物理机负责）&lt;/li&gt;
+&lt;li&gt;NOOP NOOP最简单的一种I/O调度算法，实际上是一个先入先出的队列，只做一些最基本的请求合并，常用于SSD磁盘&lt;/li&gt;
+&lt;li&gt;CFQ（Completely Fair Scheduler），被称为完全公平调度器，是现在很多发行版的默认 I/O 调度器，它为每个进程维护了一个 I/O 调度队列，并按照时间片来均匀分布每个进程的 I/O 请求&lt;/li&gt;
+&lt;li&gt;DeadLine 调度算法，分别为读、写请求创建了不同的 I/O 队列，可以提高机械磁盘的吞吐量，并确保达到最终期限（deadline）的请求被优先处理。DeadLine 调度算法，多用在 I/O 压力比较重的场景，比如数据库等&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h1 id=&#34;网络IO&#34;&gt;&lt;a href=&#34;#网络IO&#34; class=&#34;headerlink&#34; title=&#34;网络IO&#34;&gt;&lt;/a&gt;网络IO&lt;/h1&gt;"> <!-- TODO: truncate -->
 	
 	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 
@@ -163,7 +175,19 @@
 <li><p>异步I/O 程序执行I/O操作之后，不用等待完成和完成后的响应，而是继续执行。等到这次I/O完成后，响应会用事件通知的方式告知应用程序</p>
 </li>
 </ul>
-<h1 id="磁盘IO"><a href="#磁盘IO" class="headerlink" title="磁盘IO"></a>磁盘IO</h1><h1 id="网络IO"><a href="#网络IO" class="headerlink" title="网络IO"></a>网络IO</h1></div>
+<h1 id="磁盘IO"><a href="#磁盘IO" class="headerlink" title="磁盘IO"></a>磁盘IO</h1><p>在Linux中磁盘实际上是作为一个块设备来管理的，也就是以块为单位读写数据，并且支持随机读写。每个块设备都会被赋予两个设备号，<br>分别是主、次设备号。主设备号主要用于驱动程序中，用来区分设备类型；而次设备号则是用来给多个同类设备编号</p>
+<h2 id="通用块层"><a href="#通用块层" class="headerlink" title="通用块层"></a>通用块层</h2><p>和VFS类似，为了减少不同设备的差异带来的影响，Linux通过一个统一的通用块层来管理不同的设备。其实就是处在文件系统和磁盘中间的一个块设备抽象层，主要有以下两个功能：</p>
+<ul>
+<li>向上为文件系统和应用程序提供访问块的标准接口，向下把哥哥异构的磁盘设备统一抽象，并提供统一框架来管理这些设备的驱动程序</li>
+<li>给文件系统和应用程序发来的I/O请求排队，并通过重新排序、请求、合并等方式提高磁盘读写效率</li>
+</ul>
+<h2 id="Linux四种I-O调度算法"><a href="#Linux四种I-O调度算法" class="headerlink" title="Linux四种I/O调度算法"></a>Linux四种I/O调度算法</h2><ul>
+<li>NONE NONE确切等说不算调度算法，因为它完全不实用任何I/O调度器，对文件系统和应用程序的I/O其实不做任何处理，常在虚拟机中（此时磁盘I/O调度完全由物理机负责）</li>
+<li>NOOP NOOP最简单的一种I/O调度算法，实际上是一个先入先出的队列，只做一些最基本的请求合并，常用于SSD磁盘</li>
+<li>CFQ（Completely Fair Scheduler），被称为完全公平调度器，是现在很多发行版的默认 I/O 调度器，它为每个进程维护了一个 I/O 调度队列，并按照时间片来均匀分布每个进程的 I/O 请求</li>
+<li>DeadLine 调度算法，分别为读、写请求创建了不同的 I/O 队列，可以提高机械磁盘的吞吐量，并确保达到最终期限（deadline）的请求被优先处理。DeadLine 调度算法，多用在 I/O 压力比较重的场景，比如数据库等</li>
+</ul>
+<h1 id="网络IO"><a href="#网络IO" class="headerlink" title="网络IO"></a>网络IO</h1></div>
 
 <div class="meta">
 	
