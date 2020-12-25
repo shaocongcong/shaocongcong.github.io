@@ -555,7 +555,8 @@
 <li>增大磁盘预读大小</li>
 <li>优化内核设备I/O选项，适当增加队列长</li>
 </ul>
-<h1 id="网络I-O"><a href="#网络I-O" class="headerlink" title="网络I/O"></a>网络I/O</h1>]]></content>
+<h1 id="网络I-O"><a href="#网络I-O" class="headerlink" title="网络I/O"></a>网络I/O</h1><p>网络I/O主要延迟时由：服务器响应时间+带宽限制+网络延迟+跳转路由延迟+本地接收延迟</p>
+]]></content>
       <categories>
         <category>linux</category>
       </categories>
